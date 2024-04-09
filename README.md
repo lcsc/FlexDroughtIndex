@@ -7,7 +7,6 @@ It calculates the following drought indices:
 - SPI: Standardized Precipitation Index
 - SPEI:  Standardized Precipitation Evapotranspiration Index
 - SEDI: Standardized Evapotranspiration Deficit Index
-- SEDI: Standardized Evapotranspiration Deficit Index
   
 Nevertheless, actually serves to standardize any data series that has different characteristics. For example, SPI would normalize any series truncated to 0 at the bottom, SEDI truncated at the top, and SPEI any series ranging from -inf to +inf. The functions have a fundamental advantage over previous approaches as the procedure uses the distribution that gives us a better normalized resulting series for each monthly (and scale) series according to the Shapiro-Wilks test of normality.
 
