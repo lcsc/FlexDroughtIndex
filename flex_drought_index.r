@@ -28,6 +28,79 @@
 
 library(lmom)
 
+#' Calculates the empirical cumulative distribution function (ECDF) values
+#' for a given numeric series based on a specified plotting position formula.
+#'
+#' @param serie vector of data
+#' @param a constant used in the plotting position formula
+#'
+#' @return cumulative probabilities for each element in the original series.
+#' @export
+plotting_position <- function(serie, a){
+	longitud <- length(serie)
+	empiricas <- rep(NA, longitud)
+	ordenadas <- sort(serie, decreasing=F)
+	emp <- empiricas
+
+	for (i in 1:longitud){ 
+		emp[i] <- (i - a) / (longitud + 1 - 2 * a)
+	}
+	for (i in 1:longitud){ 
+		orden <- min(which(serie[i] == ordenadas))
+		empiricas[i] <- emp[orden]
+	} 
+	return(empiricas)
+}
+
+#' Calculates the weighted distance between two cumulative distribution functions (CDFs).
+#' It is typically used to compare modeled CDF values with empirical CDF values.
+#'
+#' @param modeladas A numeric vector representing the modeled CDF values 
+#' @param empiricas A numeric vector representing the empirical CDF value
+#'
+#' @return Weighted distance between the CDFs
+#' @export
+weight_dist <- function(modeladas, empiricas){
+		pesos <- 1 / empiricas
+		weight_d <- sqrt(sum((pesos * (empiricas - modeladas)) ^ 2))
+		return(weight_d)
+}
+
+#' Select the best distribution
+#'
+#' @param serie vector of data
+#'
+#' @return Scoring of distributions and selected distribution
+#' @export
+selec_distrib_dist <- function(serie){
+	lmom <- samlmu(serie, nmom = 4, sort.data = TRUE, ratios = TRUE, trim = 0)
+	param_gev <- try(pelgev(lmom), silent = TRUE)
+	model_gev <- if(is(param_gev, "try-error")){rep(NA, length(serie))} else {cdfgev(serie, para = param_gev)}
+	param_glo <- try(pelglo(lmom), silent = TRUE)
+	model_glo <- if(is(param_glo, "try-error")){rep(NA, length(serie))} else {cdfglo(serie, para = param_glo)}
+	param_gpa <- try(pelgpa(lmom), silent = TRUE)
+	model_gpa <- if(is(param_gpa, "try-error")){rep(NA, length(serie))} else {cdfgpa(serie, para = param_gpa)}
+	param_ln3 <- try(pelln3(lmom), silent = TRUE)
+	model_ln3 <- if(is(param_ln3, "try-error")){rep(NA, length(serie))} else {cdfln3(serie, para = param_ln3)}
+	param_pe3 <- try(pelpe3(lmom), silent = TRUE)
+	model_pe3 <- if(is(param_pe3, "try-error")){rep(NA, length(serie))} else {cdfpe3(serie, para = param_pe3)}
+	param_wei <- try(pelwei(lmom), silent = TRUE)
+	model_wei <- if(is(param_wei, "try-error")){rep(NA, length(serie))} else {cdfwei(serie, para = param_wei)}
+	empiricas <- plotting_position(serie, 0)
+	dist_gev <- weight_dist(model_gev, empiricas)
+	dist_glo <- weight_dist(model_glo, empiricas)
+	dist_gpa <- weight_dist(model_gpa, empiricas)
+	dist_ln3 <- weight_dist(model_ln3, empiricas)
+	dist_pe3 <- weight_dist(model_pe3, empiricas)
+	dist_wei <- weight_dist(model_wei, empiricas)
+	dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
+	min_dist <- min(dist, na.rm = TRUE)
+	minimum <- min(which(min_dist == dist))
+	distrib <- c("gev", "glo", "gpa", "ln3", "pe3", "wei")
+	selected <- distrib[minimum]
+	return(list(dist = dist, selected = selected))
+}
+
 #' Calculate shapiro test
 #'
 #' @param datos_month 
@@ -54,16 +127,16 @@ calc_sha = function(datos_month){
 #' @return Index serie and parameters
 index_data <- function(function_month_data, serie, serie_par, scale, fr){
 
-    name_functions <- c("exp", "gam", "gev", "glo", "gpa", "gno", "ln3", "nor", "pe3", "wei")
+    name_functions <- c("gev", "glo", "gpa", "ln3", "pe3", "wei")
     name_fr = paste0("X", seq(1:fr))
     statistics <- array(NA, dim = c(length(name_functions), length(name_fr)), dimnames = list(name_functions, name_fr))
 
     if (scale>1) {
         serie[scale:length(serie)] <- rowSums(embed(serie, scale), na.rm = FALSE)
-        serie[1:(scale-1)] <- NA
+        serie[1:(scale - 1)] <- NA
 
         serie_par[scale:length(serie_par)] <- rowSums(embed(serie_par, scale), na.rm = FALSE)
-        serie_par[1:(scale-1)] <- NA
+        serie_par[1:(scale - 1)] <- NA
     }
 
     imonth <- 1
@@ -75,33 +148,32 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr){
 
         ssi_month <- list()
 
-        ssi_month[["exp"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelexp, fun2 = cdfexp)
-        ssi_month[["gam"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelgam, fun2 = cdfgam)
         ssi_month[["gev"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelgev, fun2 = cdfgev)
         ssi_month[["glo"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelglo, fun2 = cdfglo)
         ssi_month[["gpa"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelgpa, fun2 = cdfgpa)
-        ssi_month[["gno"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelgno, fun2 = cdfgno)
         ssi_month[["ln3"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelln3, fun2 = cdfln3)
-        ssi_month[["nor"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelnor, fun2 = cdfnor)
         ssi_month[["pe3"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelpe3, fun2 = cdfpe3)
         ssi_month[["wei"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelwei, fun2 = cdfwei)
 
-        sha_month <- array(NA, length(ssi_month), dimnames = list(names(ssi_month)))
-        sha_month["exp"] <- calc_sha(ssi_month[["exp"]])
-        sha_month["gam"] <- calc_sha(ssi_month[["gam"]])
-        sha_month["gev"] <- calc_sha(ssi_month[["gev"]])
-        sha_month["glo"] <- calc_sha(ssi_month[["glo"]])
-        sha_month["gpa"] <- calc_sha(ssi_month[["gpa"]])
-        sha_month["gno"] <- calc_sha(ssi_month[["gno"]])
-        sha_month["ln3"] <- calc_sha(ssi_month[["ln3"]])
-        sha_month["nor"] <- calc_sha(ssi_month[["nor"]])
-        sha_month["pe3"] <- calc_sha(ssi_month[["pe3"]])
-        sha_month["wei"] <- calc_sha(ssi_month[["wei"]])
+        # sha_month <- array(NA, length(ssi_month), dimnames = list(names(ssi_month)))
+        # sha_month["gev"] <- calc_sha(ssi_month[["gev"]])
+        # sha_month["glo"] <- calc_sha(ssi_month[["glo"]])
+        # sha_month["gpa"] <- calc_sha(ssi_month[["gpa"]])
+        # sha_month["ln3"] <- calc_sha(ssi_month[["ln3"]])
+        # sha_month["pe3"] <- calc_sha(ssi_month[["pe3"]])
+        # sha_month["wei"] <- calc_sha(ssi_month[["wei"]])
+        # statistics[, imonth] <- sha_month
+        # max_month <- names(sha_month)[sha_month == max(sha_month, na.rm = FALSE)][1]
 
-        statistics[, imonth] <- sha_month
-
-        max_month <- names(sha_month)[sha_month == max(sha_month, na.rm = FALSE)][1]
-        serie[month] <- ssi_month[[max_month]]
+        selec_distrib <- selec_distrib_dist(serie_month[!is.na(serie_month)])
+        if(!is.na(selec_distrib$selected)){
+            max_month <- selec_distrib$selected
+            statistics[, imonth] <- selec_distrib$dist
+            serie[month] <- ssi_month[[max_month]]
+        }else{
+            statistics[, imonth] <- NA
+            serie[month] <- NA
+        }
     }
     return(list(serie = serie, statistics = statistics))
 }
