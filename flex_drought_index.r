@@ -165,7 +165,7 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr){
         # statistics[, imonth] <- sha_month
         # max_month <- names(sha_month)[sha_month == max(sha_month, na.rm = FALSE)][1]
 
-        selec_distrib <- selec_distrib_dist(serie_month[!is.na(serie_month)])
+        selec_distrib <- selec_distrib_dist(serie_month_par[!is.na(serie_month_par)])
         if(!is.na(selec_distrib$selected)){
             max_month <- selec_distrib$selected
             statistics[, imonth] <- selec_distrib$dist
