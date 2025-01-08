@@ -225,7 +225,7 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         return(serie_month)
     }
 
-    serie_par <- as.numeric(window(serie, ref.start, ref.end))
+    serie_par <- window(serie, ref.start, ref.end, frequency = fr)
     spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
 
     return(spi)
@@ -271,7 +271,7 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         return(serie_month)
     }
 
-    serie_par <- as.numeric(window(serie, ref.start, ref.end))
+    serie_par <- window(serie, ref.start, ref.end, frequency = fr)
     spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
 
     return(spei)
@@ -324,7 +324,7 @@ SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         return(serie_month)
     }
 
-    serie_par <- as.numeric(window(serie, ref.start, ref.end))
+    serie_par <- window(serie, ref.start, ref.end, frequency = fr)
     sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
     return(sedi)
 }
