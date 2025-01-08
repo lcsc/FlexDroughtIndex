@@ -200,20 +200,22 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
     #' @return SPI serie
     spi_month_data <- function(serie_month, serie_month_par, fun1, fun2){
         length1 <- length(serie_month)
-
         no_cero_month <- which(serie_month > 0)
         cero_month <- which(serie_month == 0)
         datos_month <- serie_month[no_cero_month]
 
-        datos_month_par <- serie_month_par[serie_month_par > 0]
+        length1_par <- length(serie_month_par)
+        no_cero_month_par <- which(serie_month_par > 0)
+        cero_month_par <- which(serie_month_par == 0)
+        datos_month_par <- serie_month_par[no_cero_month_par]
 
         serie_month <- tryCatch({
             l_mom <- samlmu(datos_month_par, nmom = 4, sort.data = TRUE, ratios = TRUE, trim = 0)
             par_data <- fun1(l_mom)
-            cdf_data <- (length(cero_month)/(length1+1))+(1-(length(cero_month)/(length1+1)))*fun2(datos_month, para = par_data)
+            cdf_data <- (length(cero_month_par)/(length1_par+1))+(1-(length(cero_month_par)/(length1_par+1)))*fun2(datos_month, para = par_data)
             norm_data <- qnorm(cdf_data)
             serie_month[no_cero_month] <- norm_data
-            serie_month[cero_month] <- qnorm(((length(cero_month)+1)/(2*(length1+1))))
+            serie_month[cero_month] <- qnorm(((length(cero_month_par)+1)/(2*(length1_par+1))))
             serie_month[serie_month == -Inf] <- -2.88
             serie_month[serie_month == Inf] <- 2.88
             return(serie_month)
@@ -225,7 +227,7 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         return(serie_month)
     }
 
-    serie_par <- window(serie, ref.start, ref.end, frequency = fr)
+    serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
     spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
 
     return(spi)
@@ -271,7 +273,7 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         return(serie_month)
     }
 
-    serie_par <- window(serie, ref.start, ref.end, frequency = fr)
+    serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
     spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
 
     return(spei)
@@ -304,15 +306,18 @@ SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         cero_month <- which(serie_month == 0)
         datos_month <- serie_month[no_cero_month]
 
-        datos_month_par <- serie_month_par[serie_month_par < 0]
+        length1_par <- length(serie_month_par)
+        no_cero_month_par <- which(serie_month_par < 0)
+        cero_month_par <- which(serie_month_par == 0)
+        datos_month_par <- serie_month_par[no_cero_month_par]
 
         serie_month <- tryCatch({
             l_mom <- samlmu(datos_month_par, nmom = 4, sort.data = TRUE, ratios = TRUE, trim = 0)
             par_data <- fun1(l_mom)
-            cdf_data <- (1-(length(cero_month)/(length1+1)))*fun2(datos_month, para = par_data)
+            cdf_data <- (1-(length(cero_month_par)/(length1_par+1)))*fun2(datos_month, para = par_data)
             norm_data <- qnorm(cdf_data)
             serie_month[no_cero_month] <- norm_data
-            serie_month[cero_month] <- qnorm(1-((length(cero_month)+1)/(2*(length1+1))))
+            serie_month[cero_month] <- qnorm(1-((length(cero_month_par)+1)/(2*(length1_par+1))))
             serie_month[serie_month == -Inf] <- -2.88
             serie_month[serie_month == Inf] <- 2.88
             return(serie_month)
@@ -324,7 +329,7 @@ SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
         return(serie_month)
     }
 
-    serie_par <- window(serie, ref.start, ref.end, frequency = fr)
+    serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
     sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
     return(sedi)
 }
