@@ -81,7 +81,7 @@ plotting_position <- function(serie, a){
 	return(empiricas)
 }
 
-#' Calculates the weighted distance between two cumulative distribution functions (CDFs).
+#' Calculates the weighted distance (WD) between two cumulative distribution functions (CDFs).
 #' It is typically used to compare modeled CDF values with empirical CDF values.
 #'
 #' @param modeladas A numeric vector representing the modeled CDF values 
@@ -98,7 +98,7 @@ weight_dist <- function(modeladas, empiricas){
 #' Select the best distribution
 #'
 #' @param serie vector of data
-#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
+#' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return Scoring of distributions and selected distribution
 #' @export
@@ -179,7 +179,7 @@ calc_sha = function(datos_month){
 #' @param serie_par vector of reference data
 #' @param scale is the time scale of the index
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
-#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
+#' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return Index serie and parameters
 index_data <- function(function_month_data, serie, serie_par, scale, fr, method = 1){
@@ -242,7 +242,7 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr, method 
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
 #' @param ref.start define the reference period for calculations
 #' @param ref.end define the reference period for calculations
-#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
+#' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return SPI serie and parameters
 #' @export
@@ -300,7 +300,7 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
 #' @param ref.start define the reference period for calculations
 #' @param ref.end define the reference period for calculations
-#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
+#' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return SPEI serie and parameters
 #' @export
@@ -345,7 +345,7 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1)
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
 #' @param ref.start define the reference period for calculations
 #' @param ref.end define the reference period for calculations
-#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
+#' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return SEDI serie and parameters
 #' @export
