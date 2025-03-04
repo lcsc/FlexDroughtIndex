@@ -28,6 +28,35 @@
 
 library(lmom)
 
+#' Cramer-von Mises (W²) Test Statistic
+#'
+#' @param probs_teoricas A numeric vector of theoretical probabilities (values between 0 and 1).
+#'
+#' @return A numeric value representing the Cramer-von Mises test statistic (W²).
+#' @export
+cvm_con_probs <- function(probs_teoricas) {
+  probs_ordenadas=sort(probs_teoricas)
+  n <- length(probs_ordenadas)  
+  i <- 1:n  
+  W2 <- sum((probs_ordenadas - (2 * i - 1) / (2 * n))^2) + 1 / (12 * n)
+  return(W2)
+}
+
+
+#' Anderson-Darling (A²) Test Statistic
+#'
+#' @param probs_teoricas A numeric vector of theoretical probabilities (values between 0 and 1).
+#'
+#' @return A numeric value representing the Anderson-Darling test statistic (A²).
+#' @export
+ad_con_probs <- function(probs_teoricas) {
+  probs_ordenadas=sort(probs_teoricas)
+  n <- length(probs_ordenadas)  
+  i <- 1:n  
+  A2 <- -n - sum((2 * i - 1) / n * (log(probs_ordenadas) + log(1 - rev(probs_ordenadas))))
+  return(A2)
+}
+
 #' Calculates the empirical cumulative distribution function (ECDF) values
 #' for a given numeric series based on a specified plotting position formula.
 #'
@@ -69,10 +98,11 @@ weight_dist <- function(modeladas, empiricas){
 #' Select the best distribution
 #'
 #' @param serie vector of data
+#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return Scoring of distributions and selected distribution
 #' @export
-selec_distrib_dist <- function(serie){
+selec_distrib_dist <- function(serie, method = 1){
 	lmom <- samlmu(serie, nmom = 4, sort.data = TRUE, ratios = TRUE, trim = 0)
 	param_gev <- try(pelgev(lmom), silent = TRUE)
 	model_gev <- if(is(param_gev, "try-error")){rep(NA, length(serie))} else {cdfgev(serie, para = param_gev)}
@@ -87,15 +117,41 @@ selec_distrib_dist <- function(serie){
 	param_wei <- try(pelwei(lmom), silent = TRUE)
 	model_wei <- if(is(param_wei, "try-error")){rep(NA, length(serie))} else {cdfwei(serie, para = param_wei)}
 	empiricas <- plotting_position(serie, 0)
-	dist_gev <- weight_dist(model_gev, empiricas)
-	dist_glo <- weight_dist(model_glo, empiricas)
-	dist_gpa <- weight_dist(model_gpa, empiricas)
-	dist_ln3 <- weight_dist(model_ln3, empiricas)
-	dist_pe3 <- weight_dist(model_pe3, empiricas)
-	dist_wei <- weight_dist(model_wei, empiricas)
-	dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
-	min_dist <- min(dist, na.rm = TRUE)
-	minimum <- min(which(min_dist == dist))
+
+    if(method == 1){
+        dist_gev <- weight_dist(model_gev, empiricas)
+        dist_glo <- weight_dist(model_glo, empiricas)
+        dist_gpa <- weight_dist(model_gpa, empiricas)
+        dist_ln3 <- weight_dist(model_ln3, empiricas)
+        dist_pe3 <- weight_dist(model_pe3, empiricas)
+        dist_wei <- weight_dist(model_wei, empiricas)
+        dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
+        min_dist <- min(dist, na.rm = TRUE)
+        minimum <- min(which(min_dist == dist))
+    }else if (method == 2){
+        dist_gev <- cvm_con_probs(model_gev)
+        dist_glo <- cvm_con_probs(model_glo)
+        dist_gpa <- cvm_con_probs(model_gpa)
+        dist_ln3 <- cvm_con_probs(model_ln3)
+        dist_pe3 <- cvm_con_probs(model_pe3)
+        dist_wei <- cvm_con_probs(model_wei)
+        dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
+        min_dist <- max(dist, na.rm = TRUE)
+        minimum <- max(which(min_dist == dist))
+    }else if (method == 3){
+        dist_gev <- ad_con_probs(model_gev)
+        dist_glo <- ad_con_probs(model_glo)
+        dist_gpa <- ad_con_probs(model_gpa)
+        dist_ln3 <- ad_con_probs(model_ln3)
+        dist_pe3 <- ad_con_probs(model_pe3)
+        dist_wei <- ad_con_probs(model_wei)
+        dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
+        min_dist <- max(dist, na.rm = TRUE)
+        minimum <- max(which(min_dist == dist))
+    }else{
+        stop("Method not found")
+    }
+
 	distrib <- c("gev", "glo", "gpa", "ln3", "pe3", "wei")
 	selected <- distrib[minimum]
 	return(list(dist = dist, selected = selected))
@@ -123,9 +179,10 @@ calc_sha = function(datos_month){
 #' @param serie_par vector of reference data
 #' @param scale is the time scale of the index
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
+#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return Index serie and parameters
-index_data <- function(function_month_data, serie, serie_par, scale, fr){
+index_data <- function(function_month_data, serie, serie_par, scale, fr, method = 1){
 
     name_functions <- c("gev", "glo", "gpa", "ln3", "pe3", "wei")
     name_fr = paste0("X", seq(1:fr))
@@ -165,7 +222,7 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr){
         # statistics[, imonth] <- sha_month
         # max_month <- names(sha_month)[sha_month == max(sha_month, na.rm = FALSE)][1]
 
-        selec_distrib <- selec_distrib_dist(serie_month_par[!is.na(serie_month_par)])
+        selec_distrib <- selec_distrib_dist(serie_month_par[!is.na(serie_month_par)], method = method)
         if(!is.na(selec_distrib$selected)){
             max_month <- selec_distrib$selected
             statistics[, imonth] <- selec_distrib$dist
@@ -185,10 +242,11 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr){
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
 #' @param ref.start define the reference period for calculations
 #' @param ref.end define the reference period for calculations
+#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return SPI serie and parameters
 #' @export
-SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
+SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
 
     #' SPI for one period
     #'
@@ -228,7 +286,7 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
     }
 
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
-    spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
+    spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
 
     return(spi)
 
@@ -242,10 +300,11 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
 #' @param ref.start define the reference period for calculations
 #' @param ref.end define the reference period for calculations
+#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return SPEI serie and parameters
 #' @export
-SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
+SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
 
     #' SPEI for one period
     #'
@@ -274,7 +333,7 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
     }
 
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
-    spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
+    spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
 
     return(spei)
 }
@@ -286,10 +345,11 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
 #' @param fr is the frequency of the data. E.g., monthly series have a frequency of 12
 #' @param ref.start define the reference period for calculations
 #' @param ref.end define the reference period for calculations
+#' @param method 1 = CDFs, 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return SEDI serie and parameters
 #' @export
-SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
+SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
 
     #' SEDI for one period
     #'
@@ -330,7 +390,7 @@ SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
     }
 
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
-    sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
+    sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
     return(sedi)
 }
 
