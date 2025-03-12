@@ -285,6 +285,11 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
         return(serie_month)
     }
 
+    if(class(serie) == "numeric"){
+        expected_length <- ceiling(length(serie) / fr)
+        serie <- c(serie, rep(NA, fr * expected_length - length(serie)))
+        serie <- ts(data = serie, start = c(1, 1), end = c(expected_length, fr), frequency = fr)
+    }
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
     spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
 
@@ -331,7 +336,11 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1)
 
         return(serie_month)
     }
-
+    if(class(serie) == "numeric"){
+        expected_length <- ceiling(length(serie) / fr)
+        serie <- c(serie, rep(NA, fr * expected_length - length(serie)))
+        serie <- ts(data = serie, start = c(1, 1), end = c(expected_length, fr), frequency = fr)
+    }
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
     spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
 
@@ -388,7 +397,11 @@ SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1)
 
         return(serie_month)
     }
-
+    if(class(serie) == "numeric"){
+        expected_length <- ceiling(length(serie) / fr)
+        serie <- c(serie, rep(NA, fr * expected_length - length(serie)))
+        serie <- ts(data = serie, start = c(1, 1), end = c(expected_length, fr), frequency = fr)
+    }
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
     sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
     return(sedi)
