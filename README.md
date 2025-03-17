@@ -1,7 +1,7 @@
 # FlexDroughtIndex
 
 FlexDroughtIndex is a package of functions in R that calculates different drought indices by means of a flexible procedure described in: 
-- Sergio M. Vicente-Serrano, Fergus Reig, Santiago Begueréa, Ahmed El-Kenawy, Fernando Domínguez-Castro, Magí Franquesa, Luis Gimeno-Sotelo, María Adell, Amar Halifa, Miguel Andres-Martin, Cesar Azorín-Molina, Iván Noguera-Corral: An optimal flexible approach to calculate standardized drought indices. Under review
+- Sergio M. Vicente-Serrano, Fergus Reig, Santiago Begueréa, Ahmed El-Kenawy, Fernando Domínguez-Castro, Magí Franquesa, Luis Gimeno-Sotelo, María Adell, Iván Noguera-Corral, Amar Halifa, Miguel Andres-Martin, Cesar Azorín-Molina: An optimal flexible approach to calculate standardized drought indices. Under review
 
 It calculates the following drought indices:
 - SPI: Standardized Precipitation Index
