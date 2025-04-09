@@ -28,148 +28,83 @@
 
 library(lmom)
 
-#' Cramer-von Mises (W²) Test Statistic
-#'
-#' @param probs_teoricas A numeric vector of theoretical probabilities (values between 0 and 1).
-#'
-#' @return A numeric value representing the Cramer-von Mises test statistic (W²).
-#' @export
-cvm_con_probs <- function(probs_teoricas) {
-  probs_ordenadas=sort(probs_teoricas)
-  n <- length(probs_ordenadas)  
-  i <- 1:n  
-  W2 <- sum((probs_ordenadas - (2 * i - 1) / (2 * n))^2) + 1 / (12 * n)
-  return(W2)
+logLik_cdf <- function(cdf_theor, cdf_emp) {
+  eps <- 1e-10  # Evitar log(0)
+  p_empirical <- pmax(diff(cdf_emp), eps)  # Probabilidad empírica en cada intervalo
+  p_theoretical <- pmax(diff(cdf_theor), eps)  # Probabilidad teórica en cada intervalo
+  length(cdf_emp)*sum(p_empirical * log(p_theoretical))
+}
+AIC_cdf <- function(cdf_theor, cdf_emp, k) {
+  logL <- logLik_cdf(cdf_theor, cdf_emp)
+  2 * k - 2 * logL
 }
 
-
-#' Anderson-Darling (A²) Test Statistic
-#'
-#' @param probs_teoricas A numeric vector of theoretical probabilities (values between 0 and 1).
-#'
-#' @return A numeric value representing the Anderson-Darling test statistic (A²).
-#' @export
-ad_con_probs <- function(probs_teoricas) {
-  probs_ordenadas=sort(probs_teoricas)
-  n <- length(probs_ordenadas)  
-  i <- 1:n  
-  A2 <- -n - sum((2 * i - 1) / n * (log(probs_ordenadas) + log(1 - rev(probs_ordenadas))))
-  return(A2)
-}
-
-#' Calculates the empirical cumulative distribution function (ECDF) values
-#' for a given numeric series based on a specified plotting position formula.
-#'
-#' @param serie vector of data
-#' @param a constant used in the plotting position formula
-#'
-#' @return cumulative probabilities for each element in the original series.
-#' @export
-plotting_position <- function(serie, a){
-	longitud <- length(serie)
-	empiricas <- rep(NA, longitud)
-	ordenadas <- sort(serie, decreasing=F)
-	emp <- empiricas
-
-	for (i in 1:longitud){ 
-		emp[i] <- (i - a) / (longitud + 1 - 2 * a)
-	}
-	for (i in 1:longitud){ 
-		orden <- min(which(serie[i] == ordenadas))
-		empiricas[i] <- emp[orden]
-	} 
-	return(empiricas)
-}
-
-#' Calculates the weighted distance (WD) between two cumulative distribution functions (CDFs).
-#' It is typically used to compare modeled CDF values with empirical CDF values.
-#'
-#' @param modeladas A numeric vector representing the modeled CDF values 
-#' @param empiricas A numeric vector representing the empirical CDF value
-#'
-#' @return Weighted distance between the CDFs
-#' @export
-weight_dist <- function(modeladas, empiricas){
-		pesos <- 1 / empiricas
-		weight_d <- sqrt(sum((pesos * (empiricas - modeladas)) ^ 2))
-		return(weight_d)
-}
 
 #' Select the best distribution
 #'
 #' @param serie vector of data
-#' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return Scoring of distributions and selected distribution
 #' @export
-selec_distrib_dist <- function(serie, method = 1){
-	lmom <- samlmu(serie, nmom = 4, sort.data = TRUE, ratios = TRUE, trim = 0)
-	param_gev <- try(pelgev(lmom), silent = TRUE)
-	model_gev <- if(is(param_gev, "try-error")){rep(NA, length(serie))} else {cdfgev(serie, para = param_gev)}
-	param_glo <- try(pelglo(lmom), silent = TRUE)
-	model_glo <- if(is(param_glo, "try-error")){rep(NA, length(serie))} else {cdfglo(serie, para = param_glo)}
-	param_gpa <- try(pelgpa(lmom), silent = TRUE)
-	model_gpa <- if(is(param_gpa, "try-error")){rep(NA, length(serie))} else {cdfgpa(serie, para = param_gpa)}
-	param_ln3 <- try(pelln3(lmom), silent = TRUE)
-	model_ln3 <- if(is(param_ln3, "try-error") | any(is.na(param_ln3))){rep(NA, length(serie))} else {cdfln3(serie, para = param_ln3)}
-	param_pe3 <- try(pelpe3(lmom), silent = TRUE)
-	model_pe3 <- if(is(param_pe3, "try-error")){rep(NA, length(serie))} else {cdfpe3(serie, para = param_pe3)}
-	param_wei <- try(pelwei(lmom), silent = TRUE)
-	model_wei <- if(is(param_wei, "try-error")){rep(NA, length(serie))} else {cdfwei(serie, para = param_wei)}
-	empiricas <- plotting_position(serie, 0)
 
-    if(method == 1){
-        dist_gev <- weight_dist(model_gev, empiricas)
-        dist_glo <- weight_dist(model_glo, empiricas)
-        dist_gpa <- weight_dist(model_gpa, empiricas)
-        dist_ln3 <- weight_dist(model_ln3, empiricas)
-        dist_pe3 <- weight_dist(model_pe3, empiricas)
-        dist_wei <- weight_dist(model_wei, empiricas)
-        dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
-        min_dist <- min(dist, na.rm = TRUE)
-        minimum <- min(which(min_dist == dist))
-    }else if (method == 2){
-        dist_gev <- cvm_con_probs(model_gev)
-        dist_glo <- cvm_con_probs(model_glo)
-        dist_gpa <- cvm_con_probs(model_gpa)
-        dist_ln3 <- cvm_con_probs(model_ln3)
-        dist_pe3 <- cvm_con_probs(model_pe3)
-        dist_wei <- cvm_con_probs(model_wei)
-        dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
-        min_dist <- max(dist, na.rm = TRUE)
-        minimum <- max(which(min_dist == dist))
-    }else if (method == 3){
-        dist_gev <- ad_con_probs(model_gev)
-        dist_glo <- ad_con_probs(model_glo)
-        dist_gpa <- ad_con_probs(model_gpa)
-        dist_ln3 <- ad_con_probs(model_ln3)
-        dist_pe3 <- ad_con_probs(model_pe3)
-        dist_wei <- ad_con_probs(model_wei)
-        dist <- c(dist_gev, dist_glo, dist_gpa, dist_ln3, dist_pe3, dist_wei)
-        min_dist <- max(dist, na.rm = TRUE)
-        minimum <- max(which(min_dist == dist))
-    }else{
-        stop("Method not found")
-    }
+selec_distrib_AIC <- function(serie){
+	lmom_data <- samlmu(serie, nmom = 4, sort.data = TRUE, ratios = TRUE, trim = 0)
+	fit_gev <- try(pelgev(lmom_data),silent=TRUE) 	  # Generalized Extreme Value (GEV)
+	fit_gev <- if(is(fit_gev, "try-error")){fit_gev <- NA}else{fit_gev <- fit_gev}
+	fit_glo <- try(pelglo(lmom_data),silent=TRUE) 	  # Generalized Logistic (GLO)
+	fit_glo <- if(is(fit_glo, "try-error")){fit_glo <- NA}else{fit_glo <- fit_glo}
+	fit_gpa <- try(pelgpa(lmom_data),silent=TRUE) 	  # Generalized Pareto (GPD)
+	fit_gpa <- if(is(fit_gpa, "try-error")){fit_gpa <- NA}else{fit_gpa <- fit_gpa}
+	fit_ln3 <- try(pelln3(lmom_data),silent=TRUE) 	  # log-Normal
+	fit_ln3 <- if(is(fit_ln3, "try-error")){fit_ln3 <- NA}else{fit_ln3 <- fit_ln3}
+	fit_pe3 <- try(pelpe3(lmom_data),silent=TRUE) 	   # Pearson 3
+	fit_pe3 <- if(is(fit_pe3, "try-error")){fit_pe3 <- NA}else{fit_pe3 <- fit_pe3}
+	fit_wei <- try(pelwei(lmom_data),silent=TRUE) 	  # Weibull
+	fit_wei <- if(is(fit_wei, "try-error")){fit_wei <- NA}else{fit_wei <- fit_wei}
+
+	x_vals <- sort(serie)
+	cdf_emp <- ecdf(serie)(x_vals)
+
+	cdf_gev <- try(cdfgev(x_vals, fit_gev),silent=TRUE)
+	cdf_glo <- try(cdfglo(x_vals, fit_glo),silent=TRUE)
+	cdf_gpa <- try(cdfgpa(x_vals, fit_gpa),silent=TRUE)
+	cdf_ln3 <- try(cdfln3(x_vals, fit_ln3),silent=TRUE)
+	cdf_pe3 <- try(cdfpe3(x_vals, fit_pe3),silent=TRUE)
+	cdf_wei <- try(cdfwei(x_vals, fit_wei),silent=TRUE)
+	cdf_gev <- if(is(cdf_gev, "try-error")){cdf_gev <- NA}else{cdf_gev <- cdf_gev}
+	cdf_glo <- if(is(cdf_glo, "try-error")){cdf_glo <- NA}else{cdf_glo <- cdf_glo}
+	cdf_gpa <- if(is(cdf_gpa, "try-error")){cdf_gpa <- NA}else{cdf_gpa <- cdf_gpa}
+	cdf_ln3 <- if(is(cdf_ln3, "try-error")){cdf_ln3 <- NA}else{cdf_ln3 <- cdf_ln3}
+	cdf_pe3 <- if(is(cdf_pe3, "try-error")){cdf_pe3 <- NA}else{cdf_pe3 <- cdf_pe3}
+	cdf_wei <- if(is(cdf_wei, "try-error")){cdf_wei <- NA}else{cdf_wei <- cdf_wei}
+
+	AIC_gev <- try(AIC_cdf(cdf_gev, cdf_emp, 3), silent = TRUE)
+	AIC_gev <- if(is(AIC_gev, "try-error")){AIC_gev <- NA} else {AIC_gev <- AIC_gev}
+	AIC_glo <- try(AIC_cdf(cdf_glo, cdf_emp, 3), silent = TRUE)
+	AIC_glo <- if(is(AIC_glo, "try-error")){AIC_glo <- NA} else {AIC_glo <- AIC_glo}
+	AIC_gpa <- try(AIC_cdf(cdf_gpa, cdf_emp, 3), silent = TRUE)
+	AIC_gpa <- if(is(AIC_gpa, "try-error")){AIC_gpa <- NA} else {AIC_gpa <- AIC_gpa}
+	AIC_ln3 <- try(AIC_cdf(cdf_ln3, cdf_emp, 3), silent = TRUE)
+	AIC_ln3 <- if(is(AIC_ln3, "try-error")){AIC_ln3 <- NA} else {AIC_ln3 <- AIC_ln3}
+	AIC_pe3 <- try(AIC_cdf(cdf_pe3, cdf_emp, 3), silent = TRUE)
+	AIC_pe3 <- if(is(AIC_pe3, "try-error")){AIC_pe3 <- NA} else {AIC_pe3 <- AIC_pe3}
+	AIC_wei <- try(AIC_cdf(cdf_wei, cdf_emp, 3), silent = TRUE)
+	AIC_wei <- if(is(AIC_wei, "try-error")){AIC_wei <- NA} else {AIC_wei <- AIC_wei}
+
+	AIC_gev <- if(length(cdf_gev) == 1){AIC_gev <- NA}else{AIC_gev <- AIC_gev}
+	AIC_glo <- if(length(cdf_glo) == 1){AIC_glo <- NA}else{AIC_glo <- AIC_glo}
+	AIC_gpa <- if(length(cdf_gpa) == 1){AIC_gpa <- NA}else{AIC_gpa <- AIC_gpa}
+	AIC_ln3 <- if(length(cdf_ln3) == 1){AIC_ln3 <- NA}else{AIC_ln3 <- AIC_ln3}
+	AIC_pe3 <- if(length(cdf_pe3) == 1){AIC_pe3 <- NA}else{AIC_pe3 <- AIC_pe3}
+	AIC_wei <- if(length(cdf_wei) == 1){AIC_wei <- NA}else{AIC_wei <- AIC_wei}
+
+	AIC <- c(AIC_gev,AIC_glo,AIC_gpa,AIC_ln3,AIC_pe3,AIC_wei)
+      min_AIC <- min(AIC, na.rm = TRUE)
+      minimum <- min(which(min_AIC == AIC))
 
 	distrib <- c("gev", "glo", "gpa", "ln3", "pe3", "wei")
 	selected <- distrib[minimum]
-	return(list(dist = dist, selected = selected))
-}
-
-#' Calculate shapiro test
-#'
-#' @param datos_month 
-#'
-#' @return shapiro test
-#' @export
-calc_sha = function(datos_month){
-    sha <- tryCatch({
-        return(shapiro.test(datos_month)$p.value)
-    }, error = function(cond) {
-        return(0)
-    })  
-    return(sha)
+	return(list(AIC = AIC, selected = selected))
 }
 
 #' Apply function to the given serie (calculate the SPI, SPEI or SEDI)
@@ -182,7 +117,7 @@ calc_sha = function(datos_month){
 #' @param method 1 = WD (Weighted Distance), 2 = Cramer-von Mises or 3 = Anderson-Darling
 #'
 #' @return Index serie and parameters
-index_data <- function(function_month_data, serie, serie_par, scale, fr, method = 1){
+index_data <- function(function_month_data, serie, serie_par, scale, fr){
 
     name_functions <- c("gev", "glo", "gpa", "ln3", "pe3", "wei")
     name_fr = paste0("X", seq(1:fr))
@@ -212,20 +147,10 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr, method 
         ssi_month[["pe3"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelpe3, fun2 = cdfpe3)
         ssi_month[["wei"]] <- function_month_data(serie_month, serie_month_par, fun1 = pelwei, fun2 = cdfwei)
 
-        # sha_month <- array(NA, length(ssi_month), dimnames = list(names(ssi_month)))
-        # sha_month["gev"] <- calc_sha(ssi_month[["gev"]])
-        # sha_month["glo"] <- calc_sha(ssi_month[["glo"]])
-        # sha_month["gpa"] <- calc_sha(ssi_month[["gpa"]])
-        # sha_month["ln3"] <- calc_sha(ssi_month[["ln3"]])
-        # sha_month["pe3"] <- calc_sha(ssi_month[["pe3"]])
-        # sha_month["wei"] <- calc_sha(ssi_month[["wei"]])
-        # statistics[, imonth] <- sha_month
-        # max_month <- names(sha_month)[sha_month == max(sha_month, na.rm = FALSE)][1]
-
-        selec_distrib <- selec_distrib_dist(serie_month_par[!is.na(serie_month_par)], method = method)
+        selec_distrib <- selec_distrib_AIC(serie_month_par[!is.na(serie_month_par)])
         if(!is.na(selec_distrib$selected)){
             max_month <- selec_distrib$selected
-            statistics[, imonth] <- selec_distrib$dist
+            statistics[, imonth] <- selec_distrib$AIC
             serie[month] <- ssi_month[[max_month]]
         }else{
             statistics[, imonth] <- NA
@@ -246,7 +171,7 @@ index_data <- function(function_month_data, serie, serie_par, scale, fr, method 
 #'
 #' @return SPI serie and parameters
 #' @export
-SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
+SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
 
     #' SPI for one period
     #'
@@ -291,7 +216,7 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
         serie <- ts(data = serie, start = c(1, 1), end = c(expected_length, fr), frequency = fr)
     }
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
-    spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
+    spi <- suppressWarnings(index_data(function_month_data = spi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
 
     return(spi)
 
@@ -309,7 +234,7 @@ SPI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
 #'
 #' @return SPEI serie and parameters
 #' @export
-SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
+SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
 
     #' SPEI for one period
     #'
@@ -342,7 +267,7 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1)
         serie <- ts(data = serie, start = c(1, 1), end = c(expected_length, fr), frequency = fr)
     }
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
-    spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
+    spei <- suppressWarnings(index_data(function_month_data = spei_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
 
     return(spei)
 }
@@ -358,7 +283,7 @@ SPEI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1)
 #'
 #' @return SEDI serie and parameters
 #' @export
-SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1){
+SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL){
 
     #' SEDI for one period
     #'
@@ -403,7 +328,7 @@ SEDI <- function(serie, scale, fr, ref.start = NULL, ref.end = NULL, method = 1)
         serie <- ts(data = serie, start = c(1, 1), end = c(expected_length, fr), frequency = fr)
     }
     serie_par <- suppressWarnings(window(serie, ref.start, ref.end, frequency = fr))
-    sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr, method = method))
+    sedi <- suppressWarnings(index_data(function_month_data = sedi_month_data, serie = serie, serie_par = serie_par, scale = scale, fr = fr))
     return(sedi)
 }
 
